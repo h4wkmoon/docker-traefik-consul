@@ -6,7 +6,7 @@ import time
 import os
 import re
 
-    #"http://192.168.99.104:8500/v1/kv/"
+# http://IP:Port/v1/kv/
 consul=os.environ['CONSULT_ROOT']
 
 if os.environ['DOCKER_TLS_VERIFY']=="1":
@@ -17,7 +17,7 @@ if os.environ['DOCKER_TLS_VERIFY']=="1":
     base_url=re.sub("^tcp","https",os.environ['DOCKER_HOST'])
 else:
     if "DOCKER_HOST" in os.environ.keys():
-        base_url=re.sub("^tcp","https",os.environ['DOCKER_HOST'])
+        base_url=re.sub("^tcp","http",os.environ['DOCKER_HOST'])
     else:
         base_url=""
 
