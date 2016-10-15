@@ -1,26 +1,29 @@
 #!/usr/bin/python
 
 import docker
-import json
 import requests
 import time
-#import consul
-consul="http://192.168.99.104:8500/v1/kv/"
+import os
+import re
+
+    #"http://192.168.99.104:8500/v1/kv/"
+consul=os.environ['CONSULT_ROOT']
+
+if os.environ['DOCKER_TLS_VERIFY']=="1":
+    tls_config = docker.tls.TLSConfig(
+        client_cert=(os.environ['DOCKER_CERT_PATH']+'/cert.pem', os.environ['DOCKER_CERT_PATH']+'/key.pem'),
+        verify=False
+        )
+    base_url=re.sub("^tcp","https",os.environ['DOCKER_HOST'])
+else:
+    if "DOCKER_HOST" in os.environ.keys():
+        base_url=re.sub("^tcp","https",os.environ['DOCKER_HOST'])
+    else:
+        base_url=""
 
 
-tls_config = docker.tls.TLSConfig(
-  client_cert=('/home/fpege/.docker/machine/machines/swarm-master/cert.pem', '/home/fpege/.docker/machine/machines/swarm-master/key.pem'),
-   verify=False
-)
-#verify=False,,ca_cert='/home/fpege/.docker/machine/machines/swarm-master/ca.pem'
-client = docker.Client(base_url='https://192.168.99.105:3376', tls=tls_config)
-# for evt in client.events():
-#     data=json.loads(evt)
-#     print json.dumps(data, sort_keys=True,indent=4, separators=(',', ': '))
-#     print data["node"]['Name']
-#     print data["Action"]
-#     if "traefik.backend" in data["Actor"]["Attributes"].keys():
-#         print data["Actor"]["Attributes"]["traefik.backend"]
+client = docker.Client(base_url=base_url, tls=tls_config)
+
 
 previous=[]
 while True:
@@ -30,7 +33,7 @@ while True:
     nb_server={}
     print "checking"
 
-    print "Oh, I've got work to do"
+
     for dock in client.containers(filters={"label":"traefik.backend"}):
         # traefik.enable=false: disable this container in traefik
         if "traefik.enable" in dock["Labels"].keys():
@@ -121,22 +124,14 @@ while True:
             kv["frontends/"+frontend+"/entryPoints"]=dock["Labels"]["traefik.frontend.entryPoints"]
 
 
-    print json.dumps(kv, sort_keys=True,indent=4, separators=(',', ': '))
-    #c = consul.Consul(host='192.168.99.104')
-    current=requests.get(consul+root+"?recurse")
-
-
     print "Currents : "+str(len(kv))+" vs Previous :"+str(len(previous))
     if previous!=kv:
+        print "Oh, I've got work to do"
         for item in kv.keys():
             print item+" ==> "+kv[item]
             r = requests.put(consul+root+"/"+item, data=kv[item])
 
-            #    c.kv.put(item,kv[item])
         r = requests.put(consul+"intern/alias", data=root)
-        #index, data= c.kv.get(root)
-        #print data
-        print current.text
     else:
         print "sleeping"
     previous=kv
